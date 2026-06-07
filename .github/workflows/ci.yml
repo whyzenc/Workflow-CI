@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - main
-  workflow_dispatch:   # Trigger manual dari GitHub Actions tab
+  workflow_dispatch:
 
 jobs:
   # ─────────────────────────────────────────────
@@ -49,7 +49,7 @@ jobs:
   docker:
     name: Build & Push Docker Image
     runs-on: ubuntu-latest
-    needs: train   # Jalankan setelah job train selesai
+    needs: train
 
     steps:
       - name: Checkout Repository
@@ -63,6 +63,19 @@ jobs:
       - name: Install MLflow
         run: pip install mlflow==2.22.0
 
+      - name: Download MLflow Artifact dari Job Train
+        uses: actions/download-artifact@v4
+        with:
+          name: mlflow-runs-whenny
+          path: MLProject/mlruns/
+
+      - name: Cari path model artifact
+        id: find_model
+        run: |
+          MODEL_PATH=$(find MLProject/mlruns -name "MLmodel" | head -1 | xargs dirname)
+          echo "Model ditemukan di: $MODEL_PATH"
+          echo "model_path=$MODEL_PATH" >> $GITHUB_OUTPUT
+
       - name: Login ke Docker Hub
         uses: docker/login-action@v3
         with:
@@ -72,9 +85,8 @@ jobs:
       - name: Build Docker Image dengan MLflow
         run: |
           mlflow models build-docker \
-            --model-uri "MLProject/mlruns/0/$(ls MLProject/mlruns/0 | head -1)/artifacts/model" \
-            --name ${{ secrets.DOCKERHUB_USERNAME }}/melbourne-housing-whenny \
-            --enable-mlserver
+            --model-uri "${{ steps.find_model.outputs.model_path }}" \
+            --name ${{ secrets.DOCKERHUB_USERNAME }}/melbourne-housing-whenny
 
       - name: Push Docker Image ke Docker Hub
         run: |
