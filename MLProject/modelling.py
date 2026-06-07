@@ -30,19 +30,16 @@ if not os.path.exists(DATA_PATH):
 df = pd.read_csv(DATA_PATH)
 print(f"Dataset Loaded : {df.shape[0]} baris x {df.shape[1]} kolom")
 
-# Memisahkan Fitur (X) dan Target (y)
 X = df.drop(columns=["Price"])
 y = df["Price"]
 print(f"Fitur Proyek    : {list(X.columns)}")
 
-# Pembagian Data (80% Train, 20% Test)
 X_train, X_test, y_train, y_test = train_test_split(
     X, y, test_size=0.20, random_state=42
 )
 print(f"Ukuran Data Train : {X_train.shape[0]}")
 print(f"Ukuran Data Test  : {X_test.shape[0]}")
 
-# MLflow Autolog — aktifkan sebelum training
 mlflow.sklearn.autolog(
     log_input_examples=True,
     log_model_signatures=True,
@@ -50,17 +47,14 @@ mlflow.sklearn.autolog(
     silent=False,
 )
 
-# Training model — MLflow Project sudah mengelola run secara otomatis
 print("\n[MLflow] Memulai training Linear Regression...")
 model = LinearRegression()
 model.fit(X_train, y_train)
 
-# Evaluasi
 y_pred = model.predict(X_test)
 mae    = mean_absolute_error(y_test, y_pred)
 r2     = r2_score(y_test, y_pred)
 
-# Log metrik ke run aktif
 mlflow.log_metric("test_mae", mae)
 mlflow.log_metric("test_r2",  r2)
 
