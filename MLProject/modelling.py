@@ -19,9 +19,8 @@ from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_absolute_error, r2_score
 
-# Konfigurasi MLflow — tracking URI dari environment variable (CI) atau lokal
+# Konfigurasi MLflow
 EXPERIMENT_NAME = "Eksperimen_Prediksi_Harga_Melbourne_Whenny"
-
 tracking_uri = os.environ.get("MLFLOW_TRACKING_URI", "mlruns")
 mlflow.set_tracking_uri(tracking_uri)
 mlflow.set_experiment(EXPERIMENT_NAME)
@@ -40,7 +39,6 @@ print(f"Dataset Loaded : {df.shape[0]} baris x {df.shape[1]} kolom")
 # Memisahkan Fitur (X) dan Target (y)
 X = df.drop(columns=["Price"])
 y = df["Price"]
-
 print(f"Fitur Proyek    : {list(X.columns)}")
 
 # Pembagian Data (80% Train, 20% Test)
@@ -50,7 +48,7 @@ X_train, X_test, y_train, y_test = train_test_split(
 print(f"Ukuran Data Train : {X_train.shape[0]}")
 print(f"Ukuran Data Test  : {X_test.shape[0]}")
 
-# MLflow Autolog
+
 mlflow.sklearn.autolog(
     log_input_examples=True,
     log_model_signatures=True,
@@ -58,9 +56,11 @@ mlflow.sklearn.autolog(
     silent=False,
 )
 
-# Memulai Sesi Perekaman Eksperimen
-with mlflow.start_run(run_name="LinearRegression_Baseline") as run:
-    print(f"\n[MLflow] Run ID     : {run.info.run_id}")
+# active run dari MLflow Project
+active_run = mlflow.active_run()
+if active_run:
+    
+    print(f"\n[MLflow] Run ID     : {active_run.info.run_id}")
     print(f"[MLflow] Experiment : {EXPERIMENT_NAME}")
 
     model = LinearRegression()
@@ -75,6 +75,24 @@ with mlflow.start_run(run_name="LinearRegression_Baseline") as run:
 
     print(f"\nTest MAE      : {mae:.2f}")
     print(f"Test R2 Score : {r2:.4f}")
+else:
+    
+    with mlflow.start_run(run_name="LinearRegression_Baseline") as run:
+        print(f"\n[MLflow] Run ID     : {run.info.run_id}")
+        print(f"[MLflow] Experiment : {EXPERIMENT_NAME}")
+
+        model = LinearRegression()
+        model.fit(X_train, y_train)
+
+        y_pred = model.predict(X_test)
+        mae    = mean_absolute_error(y_test, y_pred)
+        r2     = r2_score(y_test, y_pred)
+
+        mlflow.log_metric("test_mae", mae)
+        mlflow.log_metric("test_r2",  r2)
+
+        print(f"\nTest MAE      : {mae:.2f}")
+        print(f"Test R2 Score : {r2:.4f}")
 
 print("\n" + "="*60)
 print("MODEL BASELINE BERHASIL DIEKSEKUSI & DIKUNCI DI MLRUNS!")
