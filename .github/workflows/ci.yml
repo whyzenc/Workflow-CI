@@ -36,9 +36,6 @@ jobs:
           cd MLProject
           mlflow run . --env-manager=local
 
-      - name: Debug - Tampilkan struktur mlruns
-        run: find MLProject/mlruns -type f | sort
-
       - name: Upload MLflow Artifact ke GitHub
         uses: actions/upload-artifact@v4
         with:
@@ -72,19 +69,11 @@ jobs:
           name: mlflow-runs-whenny
           path: MLProject/mlruns/
 
-      - name: Debug - Tampilkan struktur mlruns
-        run: find MLProject/mlruns -type f | sort
-
       - name: Cari path model artifact
         id: find_model
         run: |
-          MODEL_PATH=$(find MLProject/mlruns -name "MLmodel" -path "*/artifacts/*" | head -1 | xargs -I{} dirname {})
-          if [ -z "$MODEL_PATH" ]; then
-            echo "MLmodel tidak ditemukan, coba cari artifacts folder..."
-            MODEL_PATH=$(find MLProject/mlruns -type d -name "artifacts" | head -1)
-            MODEL_PATH="$MODEL_PATH/model"
-          fi
-          echo "Model path: $MODEL_PATH"
+          MODEL_PATH=$(find MLProject/mlruns -name "MLmodel" | head -1 | xargs dirname)
+          echo "Model ditemukan di: $MODEL_PATH"
           echo "model_path=$MODEL_PATH" >> $GITHUB_OUTPUT
 
       - name: Login ke Docker Hub

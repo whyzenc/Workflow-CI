@@ -49,7 +49,6 @@ print(f"Ukuran Data Train : {X_train.shape[0]}")
 print(f"Ukuran Data Test  : {X_test.shape[0]}")
 
 # MLflow Autolog — aktifkan sebelum training
-# Tidak menggunakan mlflow.start_run() agar kompatibel dengan MLflow Project (CI)
 mlflow.sklearn.autolog(
     log_input_examples=True,
     log_model_signatures=True,
@@ -57,24 +56,43 @@ mlflow.sklearn.autolog(
     silent=False,
 )
 
-print(f"\n[MLflow] Experiment : {EXPERIMENT_NAME}")
-print(f"[MLflow] Tracking URI : {tracking_uri}")
+# Cek active run dari MLflow Project
+active_run = mlflow.active_run()
+if active_run:
+    # Jika dijalankan via MLflow Project (CI), gunakan run yang sudah ada
+    print(f"\n[MLflow] Run ID     : {active_run.info.run_id}")
+    print(f"[MLflow] Experiment : {EXPERIMENT_NAME}")
 
-# Training — autolog otomatis mencatat semua metrik & model
-model = LinearRegression()
-model.fit(X_train, y_train)
+    model = LinearRegression()
+    model.fit(X_train, y_train)
 
-# Evaluasi manual untuk ditampilkan di terminal
-y_pred = model.predict(X_test)
-mae    = mean_absolute_error(y_test, y_pred)
-r2     = r2_score(y_test, y_pred)
+    y_pred = model.predict(X_test)
+    mae    = mean_absolute_error(y_test, y_pred)
+    r2     = r2_score(y_test, y_pred)
 
-# Log metrik tambahan ke run yang aktif (dari MLflow Project)
-mlflow.log_metric("test_mae", mae)
-mlflow.log_metric("test_r2",  r2)
+    mlflow.log_metric("test_mae", mae)
+    mlflow.log_metric("test_r2",  r2)
 
-print(f"\nTest MAE      : {mae:.2f}")
-print(f"Test R2 Score : {r2:.4f}")
+    print(f"\nTest MAE      : {mae:.2f}")
+    print(f"Test R2 Score : {r2:.4f}")
+else:
+    # Jika dijalankan lokal (tanpa MLflow Project), buat run sendiri
+    with mlflow.start_run(run_name="LinearRegression_Baseline") as run:
+        print(f"\n[MLflow] Run ID     : {run.info.run_id}")
+        print(f"[MLflow] Experiment : {EXPERIMENT_NAME}")
+
+        model = LinearRegression()
+        model.fit(X_train, y_train)
+
+        y_pred = model.predict(X_test)
+        mae    = mean_absolute_error(y_test, y_pred)
+        r2     = r2_score(y_test, y_pred)
+
+        mlflow.log_metric("test_mae", mae)
+        mlflow.log_metric("test_r2",  r2)
+
+        print(f"\nTest MAE      : {mae:.2f}")
+        print(f"Test R2 Score : {r2:.4f}")
 
 print("\n" + "="*60)
 print("MODEL BASELINE BERHASIL DIEKSEKUSI & DIKUNCI DI MLRUNS!")
