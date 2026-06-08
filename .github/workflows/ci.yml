@@ -8,10 +8,10 @@ on:
       - "MLProject/**"
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
-  # ─────────────────────────────────────────────
-  # JOB 1: Training Model dengan MLflow Project
-  # ─────────────────────────────────────────────
   train:
     name: Train Model
     runs-on: ubuntu-latest
@@ -19,6 +19,8 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Setup Python 3.11
         uses: actions/setup-python@v5
@@ -40,6 +42,32 @@ jobs:
       - name: Debug - Tampilkan struktur mlruns
         run: find MLProject/mlruns -type f | sort
 
+      - name: Simpan Run ID & Commit ke Repo
+        run: |
+          RUN_ID=$(cd MLProject && python3 -c "
+          import mlflow
+          client = mlflow.tracking.MlflowClient()
+          exp = client.get_experiment_by_name('Eksperimen_Prediksi_Harga_Melbourne_Whenny')
+          if exp is None:
+              raise ValueError('Experiment tidak ditemukan')
+          runs = client.search_runs(
+              [exp.experiment_id],
+              order_by=['start_time DESC']
+          )
+          print(runs[0].info.run_id)
+          ")
+          echo "RUN_ID=$RUN_ID" >> $GITHUB_ENV
+          echo "$RUN_ID" > MLProject/run_id.txt
+
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name  "github-actions[bot]"
+          git add -f mlruns/ || true
+          git add MLProject/run_id.txt || true
+          git diff --staged --quiet \
+            || git commit -m "ci: update run_id [skip ci]"
+          git pull --rebase origin main || true
+          git push
+
       - name: Upload MLflow Artifact ke GitHub
         uses: actions/upload-artifact@v4
         with:
@@ -47,9 +75,6 @@ jobs:
           path: MLProject/mlruns/
           retention-days: 30
 
-  # ─────────────────────────────────────────────
-  # JOB 2: Build & Push Docker Image ke Docker Hub
-  # ─────────────────────────────────────────────
   docker:
     name: Build & Push Docker Image
     runs-on: ubuntu-latest
@@ -58,6 +83,8 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Download MLflow Artifact dari Job Train
         uses: actions/download-artifact@v4
@@ -118,6 +145,19 @@ jobs:
           context: docker_build
           push: true
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/melbourne-housing-whenny:latest
+
+      - name: Update Tautan_DockerHub.txt & Commit
+        run: |
+          echo "https://hub.docker.com/r/${{ secrets.DOCKERHUB_USERNAME }}/melbourne-housing-whenny" \
+            > MLProject/Tautan_DockerHub.txt
+
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name  "github-actions[bot]"
+          git add MLProject/Tautan_DockerHub.txt
+          git diff --staged --quiet \
+            || git commit -m "ci: update Docker Hub link [skip ci]"
+          git pull --rebase origin main || true
+          git push
 
       - name: Tampilkan link Docker Hub
         run: |
