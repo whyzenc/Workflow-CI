@@ -119,8 +119,13 @@ jobs:
           cat > docker_build/Dockerfile << 'DOCKEREOF'
           FROM python:3.11-slim
           WORKDIR /app
+          RUN pip install --upgrade pip
+
           RUN pip install --no-cache-dir \
             mlflow==2.22.0 \
+            fastapi==0.115.0 \
+            starlette==0.38.6 \
+            uvicorn==0.30.6 \
             scikit-learn==1.5.2 \
             pandas==2.2.2 \
             numpy==1.26.4
